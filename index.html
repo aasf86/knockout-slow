@@ -1,7 +1,10 @@
 <html>
  <head>
   <link rel="stylesheet" type="text/css" href="node_modules/bootstrap/dist/css/bootstrap.css">
+  <link rel="stylesheet" type="text/css" href="node_modules/toastr/build/toastr.min.css">
+<script type="text/javascript" src="node_modules/jquery/dist/jquery.min.js"></script>  
   <script type="text/javascript" src="node_modules/knockout/build/output/knockout-latest.js"></script>
+  <script type="text/javascript" src="node_modules/toastr/build/toastr.min.js"></script>
   <script type="text/javascript">
 
     function loadPage(){
@@ -9,10 +12,11 @@
      function VMTest(){
         
       var vm = this;
-
-        vm.personName = ko.observable('Bob');
-        vm.personAge = ko.observable(123);
-        vm.personEmail = ko.observable('email@email.com');
+        vm.state = ko.observable('add');        
+        vm.personName = ko.observable('');
+        vm.personAge = ko.observable('');
+        vm.personEmail = ko.observable('');
+        vm.item = {};
 
         let list = [];
         try {
@@ -28,18 +32,70 @@
           localStorage.setItem('lst', lst);
         });
 
+        vm.state.subscribe(function(newValue) {
+          console.log(newValue);
+          switch(newValue) {
+            case 'add':
+              break;
+            case 'rem':
+              break;
+            case 'edit':
+              break;
+          }
+        });        
+
         vm.addItem = function(){
+
+          let msg = '';
           
-          let item = JSON.stringify({ personName: vm.personName(), personEmail: vm.personEmail() });
-          vm.list.push(JSON.parse(item));
+          if(!vm.personName()) {
+            msg += 'Informe o nome\n\r\s';
+          }
+
+          if(!vm.personEmail()) {
+            msg += 'Informe o email\n\r\s';
+          }
+
+          if(msg) {
+            toastr.warning(msg);
+          }
+
+          let item = { personName: vm.personName(), personEmail: vm.personEmail(), id: Math.random().toString().replace('0.','') };
+          vm.list.push(item);          
           vm.personName('');
           vm.personEmail('');
         }
 
-        vm.removeItem = function(item){
-          console.log(item);
-          console.log(vm.list);
-          vm.list(vm.list().filter(function(person){ return person.personName != item.personName; }));
+        vm.removeItem = function(item){          
+          vm.list(vm.list().filter(function(person){ return person.id != item.id; }));
+        }
+
+        vm.editItem = function(item) {          
+          toastr.info('Editando '+ item.personName);
+          vm.item = item;
+          vm.state('edit');
+          vm.personName(item.personName);
+          vm.personEmail(item.personEmail);
+        };
+
+        vm.saveItem = function() {
+          debugger;
+          var itemEdit = vm.list().find(function(item){ return item.id == vm.item.id; });
+          itemEdit.personName = vm.personName();
+          itemEdit.personEmail = vm.personEmail();
+          vm.list(vm.list());
+          vm.reset();
+        };
+
+        vm.reset = function() {
+          vm.item = {};
+          vm.personName('');
+          vm.personEmail('');
+          vm.state('add');
+        };
+
+        vm.clearlocalStorage = function(){
+          vm.list([]);
         }
       }
 
@@ -56,35 +112,53 @@
         <div class="form-group">
           <div class="col-lg-6">
             <label for="exampleInputEmail1">Nome</label>
-            <input type="text" data-bind="value: personName" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email" />        
+            <input type="text" data-bind="value: personName" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="" />        
           </div>
           <div class="col-lg-6">
             <label for="exampleInputPassword1">Email</label>
-            <input type="email" class="form-control" id="exampleInputPassword1" placeholder="Password" data-bind="value: personEmail" />
+            <input type="email" class="form-control" id="exampleInputPassword1" placeholder="" data-bind="value: personEmail" />
           </div>          
         </div>            
-      </div>
+      </div>      
       <br/>      
-      <button type="button"  class="btn btn-primary" data-bind="click: addItem">
+      <button type="button"  class="btn btn-primary" data-bind="click: addItem, visible: state() == 'add'">
         <i class="glyphicon glyphicon-plus"></i>
         Adicionar
-      </button>   
+      </button>
+      <button type="button"  class="btn btn-info" data-bind="click: saveItem, visible: state() == 'edit'">
+        <i class="glyphicon glyphicon-floppy-disk"></i>
+        Salvar
+      </button>      
+      <button type="button"  class="btn btn-danger" data-bind="click: reset, visible: state() == 'edit'">        
+        Cancelar
+      </button>            
       <br/>              
-      <br/>      
+      <br/>       
       <table class="table">
           <thead>
-              <tr><th>Nome</th><th>Email</th><th style="width: 1%"></th></tr>
+              <tr>
+                <th>#</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th style="width: 10%; text-align: right">
+                  <button type="button"  class="btn btn-danger" data-bind="click: clearlocalStorage">
+                    <i class="glyphicon glyphicon-fire"></i>
+                  </button>                   
+                </th>
+              </tr>
           </thead>
           <tbody data-bind="foreach: list">
               <tr>
-                  <td data-bind="text: personName"></td>
-                  <td data-bind="text: personEmail"></td>
-                  <td style="width: 1%">
+                  <td data-bind="text: id"></td>
+                  <td><span data-bind="text: personName, visible: $root.item.id != id"></span><input type="text" data-bind="value: personName, visible: $root.item.id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o nome" /></td>
+                  <td><span data-bind="text: personEmail, visible: $root.item.id != id"></span><input type="text" data-bind="value: personEmail, visible: $root.item.id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o email" /></td>
+                  <td style="width: 10%; text-align: right">
+                    <button class="btn btn-primary" data-bind="click: $root.editItem"><i class="glyphicon glyphicon-pencil"></i></button>
                     <button class="btn btn-danger" data-bind="click: $root.removeItem"><i class="glyphicon glyphicon-trash"></i></button>
                   </td>
               </tr>
           </tbody>
-      </table>      
+      </table>                      
     </form>    
   </div>
  </body>
