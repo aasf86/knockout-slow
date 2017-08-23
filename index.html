@@ -7,16 +7,16 @@
   <script type="text/javascript" src="node_modules/toastr/build/toastr.min.js"></script>
   <script type="text/javascript">
 
-    function loadPage(){
+    function loadPage() {
         
-     function VMTest(){
+     function VMTest() {
         
       var vm = this;
         vm.state = ko.observable('add');        
         vm.personName = ko.observable('');
         vm.personAge = ko.observable('');
         vm.personEmail = ko.observable('');
-        vm.item = {};
+        vm.item = ko.observable({});;
 
         let list = [];
         try {
@@ -25,11 +25,10 @@
 
         vm.list = ko.observableArray(list);
 
-        vm.list.subscribe(function(newValue) {
-          console.log('list updated');
-          let lst = JSON.stringify(newValue);
-          console.log(lst);
+        vm.list.subscribe(function(newValue) {          
+          let lst = JSON.stringify(newValue);          
           localStorage.setItem('lst', lst);
+          console.log(lst);
         });
 
         vm.state.subscribe(function(newValue) {
@@ -44,7 +43,7 @@
           }
         });        
 
-        vm.addItem = function(){
+        vm.addItem = function() {
 
           let msg = '';
           
@@ -58,6 +57,7 @@
 
           if(msg) {
             toastr.warning(msg);
+            return;
           }
 
           let item = { personName: vm.personName(), personEmail: vm.personEmail(), id: Math.random().toString().replace('0.','') };
@@ -67,12 +67,13 @@
         }
 
         vm.removeItem = function(item){          
-          vm.list(vm.list().filter(function(person){ return person.id != item.id; }));
+          //vm.list(vm.list().filter(function(person){ return person.id != item.id; }));
+          vm.list.remove(item);
         }
 
         vm.editItem = function(item) {          
           toastr.info('Editando '+ item.personName);
-          vm.item = item;
+          vm.item(item);
           vm.state('edit');
           vm.personName(item.personName);
           vm.personEmail(item.personEmail);
@@ -80,15 +81,22 @@
 
         vm.saveItem = function() {
           debugger;
-          var itemEdit = vm.list().find(function(item){ return item.id == vm.item.id; });
-          itemEdit.personName = vm.personName();
-          itemEdit.personEmail = vm.personEmail();
+          let list = vm.list();
+          let itemEdit = list.find(function(item){ return item.id == vm.item().id; });
+          let index = list.indexOf(itemEdit);
+
+          if(itemEdit == vm.item() && vm.item() == list[index]) {
+            console.log('igual');
+          }
+          list[index].personName = vm.personName();
+          list[index].personEmail = vm.personEmail();
+          vm.list(list);
           vm.list(vm.list());
           vm.reset();
         };
 
         vm.reset = function() {
-          vm.item = {};
+          vm.item({});
           vm.personName('');
           vm.personEmail('');
           vm.state('add');
@@ -130,11 +138,12 @@
         Salvar
       </button>      
       <button type="button"  class="btn btn-danger" data-bind="click: reset, visible: state() == 'edit'">        
+        <i class="glyphicon glyphicon glyphicon-ban-circle"></i>
         Cancelar
       </button>            
       <br/>              
       <br/>       
-      <table class="table">
+      <table class="table table-striped table-hover">
           <thead>
               <tr>
                 <th>#</th>
@@ -147,14 +156,16 @@
                 </th>
               </tr>
           </thead>
-          <tbody data-bind="foreach: list">
+          <tbody data-bind="foreach: list()">
               <tr>
                   <td data-bind="text: id"></td>
-                  <td><span data-bind="text: personName, visible: $root.item.id != id"></span><input type="text" data-bind="value: personName, visible: $root.item.id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o nome" /></td>
-                  <td><span data-bind="text: personEmail, visible: $root.item.id != id"></span><input type="text" data-bind="value: personEmail, visible: $root.item.id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o email" /></td>
+                  <td><span data-bind="text: personName, visible: $root.item().id != id"></span><input type="text" data-bind="value: ko.observable(personName), visible: $root.item().id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o nome" /></td>
+                  <td><span data-bind="text: personEmail, visible: $root.item().id != id"></span><input type="text" data-bind="value: ko.observable(personEmail), visible: $root.item().id == id" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Insira o email" /></td>
                   <td style="width: 10%; text-align: right">
-                    <button class="btn btn-primary" data-bind="click: $root.editItem"><i class="glyphicon glyphicon-pencil"></i></button>
-                    <button class="btn btn-danger" data-bind="click: $root.removeItem"><i class="glyphicon glyphicon-trash"></i></button>
+                    <button class="btn btn-primary" data-bind="click: $root.editItem, visible: $root.item().id != id"><i class="glyphicon glyphicon-pencil"></i></button>
+                    <button class="btn btn-danger" data-bind="click: $root.removeItem, visible: $root.item().id != id"><i class="glyphicon glyphicon-trash"></i></button>
+                    <button type="button"  class="btn btn-info" data-bind="click: $root.saveItem, visible: $root.item().id == id"><i class="glyphicon glyphicon-floppy-disk"></i></button>
+                    <button type="button"  class="btn btn-danger" data-bind="click: $root.reset, visible: $root.item().id == id"><i class="glyphicon glyphicon glyphicon-ban-circle"></i></button>                    
                   </td>
               </tr>
           </tbody>
